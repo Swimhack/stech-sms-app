@@ -16,6 +16,7 @@ exports.handler = async (event, context) => {
   const healthcheck = {
     uptime: process.uptime(),
     message: validation.isValid ? 'OK' : 'CONFIGURATION_ERROR',
+    deployTimestamp: '2025-08-29-15:35:00',  // Force cache invalidation
     timestamp: Date.now(),
     environment: envInfo.nodeEnv,
     twilioConfigured: validation.twilioConfigured,
