@@ -1,0 +1,41 @@
+[build]
+  command = "npm install && npm run build:netlify"
+  publish = "public"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/send-sms"
+  to = "/.netlify/functions/send-sms"
+  status = 200
+
+[[redirects]]
+  from = "/webhook/sms"
+  to = "/.netlify/functions/webhook-sms"
+  status = 200
+
+[[redirects]]
+  from = "/messages"
+  to = "/.netlify/functions/messages"
+  status = 200
+
+[[redirects]]
+  from = "/health"
+  to = "/.netlify/functions/health"
+  status = 200
+
+[[redirects]]
+  from = "/metrics"
+  to = "/.netlify/functions/metrics"
+  status = 200
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
