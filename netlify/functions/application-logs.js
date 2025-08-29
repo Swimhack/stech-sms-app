@@ -4,7 +4,7 @@ const logger = require('../../lib/logger');
  * Public endpoint for accessing application logs in JSON format
  * Designed for LLM consumption to analyze and fix application issues
  * 
- * Access: https://stech-sms-app.netlify.app/.netlify/functions/logs
+ * Access: https://stech-sms-app.netlify.app/.netlify/functions/application-logs
  * 
  * Query parameters:
  * - level: Filter by log level (ERROR, WARN, INFO, DEBUG) - defaults to all
@@ -32,7 +32,7 @@ exports.handler = async (event, context) => {
       headers,
       body: JSON.stringify({ 
         error: 'Method not allowed',
-        endpoint: '/.netlify/functions/logs',
+        endpoint: '/.netlify/functions/application-logs',
         method: 'GET',
         description: 'Use GET request to retrieve application logs'
       })
@@ -78,7 +78,7 @@ exports.handler = async (event, context) => {
     // Create LLM-friendly response structure
     const response = {
       meta: {
-        endpoint: 'https://stech-sms-app.netlify.app/.netlify/functions/logs',
+        endpoint: 'https://stech-sms-app.netlify.app/.netlify/functions/application-logs',
         timestamp: new Date().toISOString(),
         query: {
           level: level,
@@ -132,7 +132,7 @@ exports.handler = async (event, context) => {
         error: 'Internal server error',
         message: 'Failed to retrieve application logs',
         suggestion: 'Try again with different parameters or check application status',
-        endpoint: '/.netlify/functions/logs'
+        endpoint: '/.netlify/functions/application-logs'
       }, null, 2)
     };
   }
