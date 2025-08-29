@@ -26,9 +26,10 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    // Verify admin access
+    // Verify admin access using config system
+    const config = require('../../lib/config');
     const adminKey = event.queryStringParameters?.admin_key;
-    const expectedKey = process.env.ADMIN_KEY || 'sms-app-admin-2025';
+    const expectedKey = config.get('ADMIN_KEY');
     
     if (adminKey !== expectedKey) {
       logger.warn('Unauthorized agent log access attempt', {

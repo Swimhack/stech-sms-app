@@ -1,19 +1,28 @@
+const config = require('../../lib/config');
+
 exports.handler = async (event, context) => {
+  const validation = config.validate();
+  const envInfo = config.getEnvironmentInfo();
+  
   const healthcheck = {
     uptime: process.uptime(),
-    message: 'OK',
+    message: validation.isValid ? 'OK' : 'CONFIGURATION_ERROR',
     timestamp: Date.now(),
-    environment: process.env.NODE_ENV || 'development',
-    twilioConfigured: !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN),
-    function: 'Netlify Function'
+    environment: envInfo.nodeEnv,
+    twilioConfigured: validation.twilioConfigured,
+    function: 'Netlify Function',
+    status: validation.isValid ? 'HEALTHY' : 'MISCONFIGURED',
+    configSummary: validation.summary,
+    platform: envInfo.platform,
+    region: envInfo.region
   };
   
   return {
-    statusCode: 200,
+    statusCode: validation.isValid ? 200 : 500,
     headers: {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*'
     },
-    body: JSON.stringify(healthcheck)
+    body: JSON.stringify(healthcheck, null, 2)
   };
 };

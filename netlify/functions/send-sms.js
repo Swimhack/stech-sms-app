@@ -39,12 +39,16 @@ exports.handler = async (event, context) => {
     };
   }
 
-  // Validate environment variables
-  const requiredEnvVars = ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_PHONE_NUMBER'];
-  const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
-  
-  if (missingVars.length > 0) {
-    logger.error('Missing environment variables', { missingVars }, requestId);
+  // Validate configuration using config system
+  try {
+    const twilioConfig = require('../../lib/config').getTwilioConfig();
+    var client = twilio(twilioConfig.accountSid, twilioConfig.authToken);
+  } catch (configError) {
+    logger.error('Twilio configuration error', { 
+      error: configError.message,
+      fix: 'Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER to Netlify environment variables'
+    }, requestId);
+    
     return {
       statusCode: 500,
       headers: {
@@ -54,13 +58,16 @@ exports.handler = async (event, context) => {
       body: JSON.stringify({
         success: false,
         message: 'Server configuration error',
-        error: `Missing environment variables: ${missingVars.join(', ')}`,
+        error: configError.message,
+        fix: {
+          description: 'Configure Twilio environment variables in Netlify',
+          url: 'https://app.netlify.com/sites/stech-sms-app/settings/env',
+          variables: ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_PHONE_NUMBER']
+        },
         requestId
       })
     };
   }
-
-  const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
   
   try {
     // Validate request body
@@ -126,22 +133,24 @@ exports.handler = async (event, context) => {
       };
     }
 
+    const twilioConfig = require('../../lib/config').getTwilioConfig();
+    
     logger.info('Sending SMS via Twilio', {
       to: to.replace(/\d(?=\d{4})/g, '*'), // Mask phone number for security
       messageLength: message.length,
-      from: process.env.TWILIO_PHONE_NUMBER
+      from: twilioConfig.phoneNumber
     }, requestId);
     
     const twilioMessage = await client.messages.create({
       body: message,
-      from: process.env.TWILIO_PHONE_NUMBER,
+      from: twilioConfig.phoneNumber,
       to: to
     });
 
     const messageRecord = {
       id: twilioMessage.sid,
       to: to,
-      from: process.env.TWILIO_PHONE_NUMBER,
+      from: twilioConfig.phoneNumber,
       body: message,
       direction: 'outbound',
       timestamp: new Date().toISOString(),

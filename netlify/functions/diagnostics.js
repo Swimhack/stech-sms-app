@@ -1,4 +1,5 @@
 const logger = require('../../lib/logger');
+const config = require('../../lib/config');
 const crypto = require('crypto');
 
 exports.handler = async (event, context) => {
@@ -20,102 +21,34 @@ exports.handler = async (event, context) => {
   }, requestId);
 
   try {
-    const requiredEnvVars = [
-      'TWILIO_ACCOUNT_SID',
-      'TWILIO_AUTH_TOKEN', 
-      'TWILIO_PHONE_NUMBER'
-    ];
-
-    const optionalEnvVars = [
-      'ADMIN_KEY',
-      'LOG_ACCESS_SECRET',
-      'NODE_ENV'
-    ];
-
-    const envStatus = {};
+    const diagnostics = config.generateConfigReport();
+    diagnostics.timestamp = new Date().toISOString();
+    diagnostics.requestId = requestId;
     
-    // Check required variables
-    requiredEnvVars.forEach(varName => {
-      const value = process.env[varName];
-      envStatus[varName] = {
-        configured: !!value,
-        hasValue: !!value,
-        length: value ? value.length : 0,
-        type: 'REQUIRED'
-      };
-    });
-
-    // Check optional variables
-    optionalEnvVars.forEach(varName => {
-      const value = process.env[varName];
-      envStatus[varName] = {
-        configured: !!value,
-        hasValue: !!value,
-        length: value ? value.length : 0,
-        type: 'OPTIONAL'
-      };
-    });
-
-    const missingRequired = requiredEnvVars.filter(varName => !process.env[varName]);
-    const missingOptional = optionalEnvVars.filter(varName => !process.env[varName]);
-
-    const diagnostics = {
-      timestamp: new Date().toISOString(),
-      requestId,
-      status: missingRequired.length > 0 ? 'CONFIGURATION_ERROR' : 'OK',
-      environment: {
-        nodeEnv: process.env.NODE_ENV || 'not-set',
-        platform: 'netlify-functions',
-        region: process.env.AWS_REGION || 'unknown'
-      },
-      configuration: {
-        requiredVariables: {
-          total: requiredEnvVars.length,
-          configured: requiredEnvVars.length - missingRequired.length,
-          missing: missingRequired,
-          status: envStatus
-        },
-        optionalVariables: {
-          total: optionalEnvVars.length,
-          configured: optionalEnvVars.length - missingOptional.length,
-          missing: missingOptional
-        }
-      },
-      twilioStatus: {
-        accountSidConfigured: !!process.env.TWILIO_ACCOUNT_SID,
-        authTokenConfigured: !!process.env.TWILIO_AUTH_TOKEN,
-        phoneNumberConfigured: !!process.env.TWILIO_PHONE_NUMBER,
-        allConfigured: !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER)
-      },
-      recommendations: [],
-      nextSteps: []
+    // Add fix instructions
+    diagnostics.fixInstructions = {
+      netlifyDashboard: 'https://app.netlify.com/sites/stech-sms-app/settings/env',
+      steps: [
+        '1. Go to Netlify Dashboard → stech-sms-app → Site Settings → Environment Variables',
+        '2. Add missing environment variables listed in nextSteps',
+        '3. Trigger new deployment from Deploys tab',
+        '4. Test /health endpoint to verify configuration'
+      ],
+      verificationUrls: {
+        health: 'https://stech-sms-app.netlify.app/health',
+        diagnostics: 'https://stech-sms-app.netlify.app/diagnostics',
+        smsApp: 'https://stech-sms-app.netlify.app/'
+      }
     };
-
-    // Add recommendations
-    if (missingRequired.length > 0) {
-      diagnostics.recommendations.push('Configure missing required environment variables in Netlify dashboard');
-      diagnostics.recommendations.push('Go to Site Settings > Environment Variables in Netlify');
-      diagnostics.nextSteps.push('Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER');
-    }
-
-    if (!process.env.ADMIN_KEY) {
-      diagnostics.recommendations.push('Set ADMIN_KEY for log access security');
-      diagnostics.nextSteps.push('Add ADMIN_KEY=sms-app-admin-2025');
-    }
-
-    if (!process.env.LOG_ACCESS_SECRET) {
-      diagnostics.recommendations.push('Set LOG_ACCESS_SECRET for log token signing');
-      diagnostics.nextSteps.push('Add LOG_ACCESS_SECRET=sms-log-secret-2025-secure');
-    }
 
     logger.info('Diagnostics completed', {
       status: diagnostics.status,
-      missingRequired: missingRequired.length,
-      missingOptional: missingOptional.length
+      missingVars: diagnostics.validation.missing.length,
+      isValid: diagnostics.validation.isValid
     }, requestId);
 
     return {
-      statusCode: 200,
+      statusCode: diagnostics.validation.isValid ? 200 : 500,
       headers,
       body: JSON.stringify(diagnostics, null, 2)
     };
@@ -132,7 +65,8 @@ exports.handler = async (event, context) => {
       body: JSON.stringify({
         error: 'Diagnostics failed',
         message: error.message,
-        requestId
+        requestId,
+        fix: 'Check server logs and ensure all environment variables are configured'
       })
     };
   }
