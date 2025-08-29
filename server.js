@@ -87,7 +87,50 @@ app.get('/messages', (req, res) => {
   });
 });
 
+<<<<<<< HEAD
 app.listen(port, () => {
   console.log(`SMS app listening at http://localhost:${port}`);
   console.log(`Twilio phone number: ${process.env.TWILIO_PHONE_NUMBER}`);
+=======
+app.get('/health', (req, res) => {
+  const healthcheck = {
+    uptime: process.uptime(),
+    message: 'OK',
+    timestamp: Date.now(),
+    environment: process.env.NODE_ENV || 'development',
+    twilioConfigured: !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN)
+  };
+  
+  try {
+    res.status(200).json(healthcheck);
+  } catch (error) {
+    healthcheck.message = error.message;
+    res.status(503).json(healthcheck);
+  }
+});
+
+app.get('/metrics', (req, res) => {
+  res.json({
+    messagesSent: messageHistory.filter(m => m.direction === 'outbound').length,
+    messagesReceived: messageHistory.filter(m => m.direction === 'inbound').length,
+    totalMessages: messageHistory.length,
+    uptime: process.uptime(),
+    memoryUsage: process.memoryUsage(),
+    timestamp: Date.now()
+  });
+});
+
+const server = app.listen(port, () => {
+  console.log(`SMS app listening at http://localhost:${port}`);
+  console.log(`Twilio phone number: ${process.env.TWILIO_PHONE_NUMBER}`);
+  console.log(`Health check available at: http://localhost:${port}/health`);
+});
+
+process.on('SIGTERM', () => {
+  console.log('SIGTERM signal received: closing HTTP server');
+  server.close(() => {
+    console.log('HTTP server closed');
+    process.exit(0);
+  });
+>>>>>>> ba193f8480f38c95e103e03cde1114b0c15c91c1
 });
