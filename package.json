@@ -5,7 +5,11 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "build:netlify": "echo 'Build complete'",
+    "fix:netlify": "node fix-netlify-config.js",
+    "test:config": "node -e \"console.log('Testing configuration...'); const config = require('./lib/config'); console.log(JSON.stringify(config.generateConfigReport(), null, 2));\"",
+    "test:sprite": "node test-sprite.js"
   },
   "dependencies": {
     "express": "^4.18.2",
