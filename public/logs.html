@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMS App - Application Logs</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            background: #0a0a0a;
+            color: #00ff41;
+            padding: 20px;
+            line-height: 1.4;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #00ff41;
+            background: rgba(0, 255, 65, 0.05);
+        }
+        
+        .header h1 {
+            color: #00ff41;
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #333;
+            background: #111;
+            align-items: center;
+        }
+        
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .control-group label {
+            color: #888;
+            font-size: 12px;
+        }
+        
+        .control-group select,
+        .control-group input {
+            background: #000;
+            border: 1px solid #333;
+            color: #00ff41;
+            padding: 5px 10px;
+            font-family: inherit;
+            font-size: 12px;
+        }
+        
+        .control-group button {
+            background: #00ff41;
+            color: #000;
+            border: none;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        
+        .control-group button:hover {
+            background: #00cc33;
+        }
+        
+        .status {
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #333;
+            background: #111;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .status-item {
+            font-size: 12px;
+        }
+        
+        .logs-container {
+            border: 1px solid #333;
+            background: #111;
+            padding: 0;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .logs-header {
+            background: #222;
+            padding: 10px;
+            border-bottom: 1px solid #333;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .json-output {
+            padding: 20px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+        
+        .error {
+            color: #ff4444;
+            background: rgba(255, 68, 68, 0.1);
+            padding: 15px;
+            border: 1px solid #ff4444;
+            margin-bottom: 20px;
+        }
+        
+        .log-entry {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-left: 3px solid #333;
+        }
+        
+        .log-entry.ERROR {
+            border-left-color: #ff4444;
+            background: rgba(255, 68, 68, 0.05);
+        }
+        
+        .log-entry.WARN {
+            border-left-color: #ffaa00;
+            background: rgba(255, 170, 0, 0.05);
+        }
+        
+        .log-entry.INFO {
+            border-left-color: #00aaff;
+            background: rgba(0, 170, 255, 0.05);
+        }
+        
+        .log-entry.DEBUG {
+            border-left-color: #888;
+            background: rgba(136, 136, 136, 0.05);
+        }
+        
+        .log-timestamp {
+            color: #666;
+            font-size: 11px;
+        }
+        
+        .log-level {
+            display: inline-block;
+            padding: 2px 6px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-right: 10px;
+            border-radius: 3px;
+        }
+        
+        .log-level.ERROR { background: #ff4444; color: white; }
+        .log-level.WARN { background: #ffaa00; color: black; }
+        .log-level.INFO { background: #00aaff; color: white; }
+        .log-level.DEBUG { background: #888; color: white; }
+        
+        .refresh-indicator {
+            display: inline-block;
+            color: #00ff41;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        .auto-refresh {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .auto-refresh input[type="checkbox"] {
+            transform: scale(1.2);
+        }
+        
+        .url-info {
+            background: #222;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #333;
+            font-size: 11px;
+            color: #888;
+        }
+        
+        .url-info code {
+            color: #00ff41;
+            background: #000;
+            padding: 2px 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📱 SMS APP - APPLICATION LOGS</h1>
+        <p>Real-time application logs for debugging and monitoring</p>
+    </div>
+    
+    <div class="url-info">
+        <strong>API Endpoint:</strong> <code id="apiEndpoint">/.netlify/functions/logs</code>
+        <br><strong>Direct JSON Access:</strong> <code id="jsonUrl">https://stech-sms-app.netlify.app/.netlify/functions/logs</code>
+    </div>
+    
+    <div class="controls">
+        <div class="control-group">
+            <label>Level:</label>
+            <select id="levelFilter">
+                <option value="ALL">All Levels</option>
+                <option value="ERROR">Errors Only</option>
+                <option value="WARN">Warnings Only</option>
+                <option value="INFO">Info Only</option>
+                <option value="DEBUG">Debug Only</option>
+            </select>
+        </div>
+        
+        <div class="control-group">
+            <label>Limit:</label>
+            <input type="number" id="limitInput" value="50" min="1" max="500" style="width: 60px;">
+        </div>
+        
+        <div class="control-group">
+            <label>Hours:</label>
+            <input type="number" id="hoursInput" value="24" min="1" max="168" style="width: 60px;">
+        </div>
+        
+        <div class="control-group">
+            <label>Search:</label>
+            <input type="text" id="searchInput" placeholder="Filter logs..." style="width: 150px;">
+        </div>
+        
+        <div class="control-group">
+            <button onclick="loadLogs()">🔄 Refresh</button>
+        </div>
+        
+        <div class="control-group auto-refresh">
+            <input type="checkbox" id="autoRefresh">
+            <label for="autoRefresh">Auto-refresh (30s)</label>
+        </div>
+        
+        <div class="control-group">
+            <button onclick="copyLogsUrl()">📋 Copy URL</button>
+        </div>
+        
+        <div class="control-group">
+            <button onclick="toggleFormat()">🔧 Toggle Format</button>
+        </div>
+    </div>
+    
+    <div class="status">
+        <div>
+            <span class="status-item">Status: <span id="connectionStatus">Connecting...</span></span>
+        </div>
+        <div>
+            <span class="status-item">Last Updated: <span id="lastUpdated">Never</span></span>
+        </div>
+        <div>
+            <span class="status-item">Total Logs: <span id="totalLogs">0</span></span>
+        </div>
+        <div>
+            <span class="status-item">Errors: <span id="errorCount">0</span></span>
+        </div>
+    </div>
+    
+    <div class="logs-container">
+        <div class="logs-header">
+            <strong>Application Logs</strong>
+            <span id="refreshIndicator" class="refresh-indicator" style="display: none;">●</span>
+            <span style="float: right;">
+                Format: <span id="currentFormat">Structured</span>
+            </span>
+        </div>
+        <div id="logsOutput" class="json-output loading">
+            Loading logs...
+        </div>
+    </div>
+
+    <script>
+        let autoRefreshInterval;
+        let currentFormat = 'structured'; // 'structured' or 'raw'
+        
+        // Load logs on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadLogs();
+            updateUrls();
+            
+            // Setup auto-refresh
+            document.getElementById('autoRefresh').addEventListener('change', function() {
+                if (this.checked) {
+                    autoRefreshInterval = setInterval(loadLogs, 30000);
+                } else {
+                    clearInterval(autoRefreshInterval);
+                }
+            });
+            
+            // Setup real-time filter updates
+            ['levelFilter', 'limitInput', 'hoursInput', 'searchInput'].forEach(id => {
+                document.getElementById(id).addEventListener('change', updateUrls);
+                document.getElementById(id).addEventListener('input', updateUrls);
+            });
+        });
+        
+        function updateUrls() {
+            const level = document.getElementById('levelFilter').value;
+            const limit = document.getElementById('limitInput').value;
+            const hours = document.getElementById('hoursInput').value;
+            const search = document.getElementById('searchInput').value;
+            
+            let params = [];
+            if (level !== 'ALL') params.push(`level=${level}`);
+            if (limit !== '50') params.push(`limit=${limit}`);
+            if (hours !== '24') params.push(`hours=${hours}`);
+            if (search) params.push(`search=${encodeURIComponent(search)}`);
+            
+            const paramString = params.length > 0 ? '?' + params.join('&') : '';
+            const endpoint = `/.netlify/functions/logs${paramString}`;
+            const fullUrl = `https://stech-sms-app.netlify.app/.netlify/functions/logs${paramString}`;
+            
+            document.getElementById('apiEndpoint').textContent = endpoint;
+            document.getElementById('jsonUrl').textContent = fullUrl;
+        }
+        
+        async function loadLogs() {
+            const refreshIndicator = document.getElementById('refreshIndicator');
+            const logsOutput = document.getElementById('logsOutput');
+            const connectionStatus = document.getElementById('connectionStatus');
+            
+            refreshIndicator.style.display = 'inline-block';
+            connectionStatus.textContent = 'Loading...';
+            
+            try {
+                const level = document.getElementById('levelFilter').value;
+                const limit = document.getElementById('limitInput').value;
+                const hours = document.getElementById('hoursInput').value;
+                const search = document.getElementById('searchInput').value;
+                
+                let params = [];
+                if (level !== 'ALL') params.push(`level=${level}`);
+                if (limit) params.push(`limit=${limit}`);
+                if (hours) params.push(`hours=${hours}`);
+                if (search) params.push(`search=${encodeURIComponent(search)}`);
+                
+                const url = `/.netlify/functions/logs${params.length > 0 ? '?' + params.join('&') : ''}`;
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayLogs(data);
+                    connectionStatus.textContent = 'Connected';
+                    document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString();
+                    document.getElementById('totalLogs').textContent = data.meta?.stats?.total_logs || 0;
+                    document.getElementById('errorCount').textContent = data.meta?.stats?.error_count || 0;
+                } else {
+                    throw new Error(data.error || 'Failed to load logs');
+                }
+                
+            } catch (error) {
+                console.error('Error loading logs:', error);
+                connectionStatus.textContent = 'Error';
+                logsOutput.innerHTML = `<div class="error">
+                    <strong>Error loading logs:</strong><br>
+                    ${error.message}<br><br>
+                    <strong>Possible causes:</strong><br>
+                    • Logs endpoint not deployed yet<br>
+                    • Network connectivity issues<br>
+                    • Server configuration error<br><br>
+                    <strong>Try:</strong><br>
+                    • Refresh the page<br>
+                    • Check the direct API endpoint<br>
+                    • Verify application is deployed
+                </div>`;
+            }
+            
+            refreshIndicator.style.display = 'none';
+        }
+        
+        function displayLogs(data) {
+            const logsOutput = document.getElementById('logsOutput');
+            
+            if (currentFormat === 'raw') {
+                logsOutput.textContent = JSON.stringify(data, null, 2);
+                return;
+            }
+            
+            // Structured format
+            let html = '';
+            
+            // Analysis summary
+            if (data.analysis) {
+                html += `<div style="background: #222; padding: 15px; margin-bottom: 20px; border: 1px solid #333;">
+                    <strong style="color: #00ff41;">📊 ANALYSIS SUMMARY</strong><br>
+                    <span style="color: #888;">${data.analysis.summary}</span><br>
+                    <strong>Health Status:</strong> <span style="color: ${data.analysis.health_status === 'HEALTHY' ? '#00ff41' : '#ff4444'}">${data.analysis.health_status}</span>
+                </div>`;
+                
+                if (data.analysis.recommendations.length > 0) {
+                    html += `<div style="background: rgba(255, 170, 0, 0.1); padding: 15px; margin-bottom: 20px; border: 1px solid #ffaa00;">
+                        <strong style="color: #ffaa00;">💡 RECOMMENDATIONS</strong><br>`;
+                    data.analysis.recommendations.forEach(rec => {
+                        html += `<span style="color: #ccc;">• ${rec}</span><br>`;
+                    });
+                    html += `</div>`;
+                }
+            }
+            
+            // Logs
+            if (data.logs && data.logs.length > 0) {
+                html += `<div style="margin-bottom: 10px;"><strong style="color: #00ff41;">📝 LOG ENTRIES (${data.logs.length})</strong></div>`;
+                
+                data.logs.forEach(log => {
+                    html += `<div class="log-entry ${log.level}">
+                        <div>
+                            <span class="log-level ${log.level}">${log.level}</span>
+                            <span class="log-timestamp">${new Date(log.timestamp).toLocaleString()}</span>
+                            ${log.request_id ? `<span style="color: #666; font-size: 10px;"> [${log.request_id}]</span>` : ''}
+                        </div>
+                        <div style="margin-top: 5px; color: #ddd;">${log.message}</div>`;
+                    
+                    if (log.error_details) {
+                        html += `<div style="margin-top: 5px; color: #ff4444; font-size: 11px;">
+                            <strong>Error:</strong> ${log.error_details.message}`;
+                        if (log.error_details.code) {
+                            html += `<br><strong>Code:</strong> ${log.error_details.code}`;
+                        }
+                        html += `</div>`;
+                    }
+                    
+                    if (log.request) {
+                        html += `<div style="margin-top: 5px; color: #888; font-size: 11px;">
+                            <strong>Request:</strong> ${log.request.method} ${log.request.path}
+                        </div>`;
+                    }
+                    
+                    if (log.configuration) {
+                        html += `<div style="margin-top: 5px; color: #ffaa00; font-size: 11px;">
+                            <strong>Config Issue:</strong> ${log.configuration.missing_vars ? 'Missing: ' + log.configuration.missing_vars.join(', ') : 'Configuration error'}
+                        </div>`;
+                    }
+                    
+                    html += `</div>`;
+                });
+            } else {
+                html += `<div style="text-align: center; padding: 40px; color: #888;">
+                    No logs found matching current filters.<br>
+                    <small>Try adjusting the time range or log level filter.</small>
+                </div>`;
+            }
+            
+            logsOutput.innerHTML = html;
+        }
+        
+        function toggleFormat() {
+            currentFormat = currentFormat === 'structured' ? 'raw' : 'structured';
+            document.getElementById('currentFormat').textContent = 
+                currentFormat === 'structured' ? 'Structured' : 'Raw JSON';
+            loadLogs();
+        }
+        
+        function copyLogsUrl() {
+            const url = document.getElementById('jsonUrl').textContent;
+            navigator.clipboard.writeText(url).then(() => {
+                const button = event.target;
+                const originalText = button.textContent;
+                button.textContent = '✅ Copied!';
+                setTimeout(() => {
+                    button.textContent = originalText;
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>
