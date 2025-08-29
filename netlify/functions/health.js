@@ -4,6 +4,15 @@ exports.handler = async (event, context) => {
   const validation = config.validate();
   const envInfo = config.getEnvironmentInfo();
   
+  // Force environment variable debug info
+  const envDebug = {
+    TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID ? 'SET' : 'MISSING',
+    TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN ? 'SET' : 'MISSING', 
+    TWILIO_PHONE_NUMBER: process.env.TWILIO_PHONE_NUMBER ? 'SET' : 'MISSING',
+    ADMIN_KEY: process.env.ADMIN_KEY ? 'SET' : 'MISSING',
+    NODE_ENV: process.env.NODE_ENV || 'undefined'
+  };
+  
   const healthcheck = {
     uptime: process.uptime(),
     message: validation.isValid ? 'OK' : 'CONFIGURATION_ERROR',
@@ -14,7 +23,8 @@ exports.handler = async (event, context) => {
     status: validation.isValid ? 'HEALTHY' : 'MISCONFIGURED',
     configSummary: validation.summary,
     platform: envInfo.platform,
-    region: envInfo.region
+    region: envInfo.region,
+    envDebug: envDebug
   };
   
   return {
