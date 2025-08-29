@@ -36,6 +36,21 @@
   to = "/.netlify/functions/metrics"
   status = 200
 
+[[redirects]]
+  from = "/logs"
+  to = "/.netlify/functions/logs"
+  status = 200
+
+[[redirects]]
+  from = "/agent-logs"
+  to = "/.netlify/functions/agent-logs"
+  status = 200
+
+[[redirects]]
+  from = "/log-token"
+  to = "/.netlify/functions/log-token"
+  status = 200
+
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
