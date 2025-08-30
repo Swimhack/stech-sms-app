@@ -1,0 +1,15 @@
+FORCE NETLIFY DEPLOYMENT - 2025-08-30-16:02:30
+
+This file exists solely to trigger a new Netlify deployment.
+The current deployment is stuck and not picking up the configuration fixes.
+
+Changes that should be deployed:
+- Fixed lib/config.js with fallback Twilio credentials  
+- Added getTwilioDefault() method
+- Updated validate() to use get() method with defaults
+- Added environment variable debugging to health endpoint
+
+Expected result after deployment:
+- Health endpoint should show "twilioConfigured": true
+- SMS functionality should work without environment variables
+- deployTimestamp field should appear in health response
