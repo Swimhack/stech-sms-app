@@ -1,17 +1,3 @@
-<<<<<<< HEAD
-FROM node:18-alpine
-
-WORKDIR /app
-
-COPY package*.json ./
-RUN npm ci --only=production
-
-COPY . .
-
-EXPOSE 8080
-
-CMD ["npm", "start"]
-=======
 # Multi-stage build for optimized production image
 FROM node:18-alpine AS builder
 
@@ -66,4 +52,3 @@ ENTRYPOINT ["dumb-init", "--"]
 
 # Start application
 CMD ["node", "server.js"]
->>>>>>> ba193f8480f38c95e103e03cde1114b0c15c91c1
