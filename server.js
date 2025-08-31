@@ -45,11 +45,44 @@ app.post('/send-sms', async (req, res) => {
 
     messageHistory.push(messageRecord);
 
-    res.json({
+    // Check account status to provide better feedback
+    let accountInfo = {};
+    try {
+      const account = await client.api.accounts(twilioConfig.accountSid).fetch();
+      accountInfo = {
+        accountType: account.type,
+        status: account.status
+      };
+    } catch (err) {
+      console.warn('Could not fetch account info:', err.message);
+    }
+
+    // Provide detailed response with potential delivery warnings
+    const response = {
       success: true,
       message: 'SMS sent successfully',
-      data: messageRecord
-    });
+      data: messageRecord,
+      twilioResponse: {
+        sid: twilioMessage.sid,
+        status: twilioMessage.status,
+        errorCode: twilioMessage.errorCode,
+        errorMessage: twilioMessage.errorMessage,
+        accountType: accountInfo.accountType
+      },
+      warnings: []
+    };
+
+    // Add warnings for trial accounts
+    if (accountInfo.accountType === 'Trial') {
+      response.warnings.push('Trial account: SMS will only be delivered to verified phone numbers');
+    }
+
+    // Add warnings for queued status
+    if (twilioMessage.status === 'queued') {
+      response.warnings.push('Message queued - actual delivery may take time or fail for unverified numbers');
+    }
+
+    res.json(response);
 
   } catch (error) {
     console.error('Error sending SMS:', error);
@@ -85,6 +118,97 @@ app.get('/messages', (req, res) => {
     success: true,
     messages: messageHistory.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
   });
+});
+
+// Check status of a specific message
+app.get('/message-status/:sid', async (req, res) => {
+  try {
+    const config = require('./lib/config');
+    const twilioConfig = config.getTwilioConfig();
+    const twilio = require('twilio');
+    const client = twilio(twilioConfig.accountSid, twilioConfig.authToken);
+
+    const message = await client.messages(req.params.sid).fetch();
+    
+    res.json({
+      success: true,
+      messageStatus: {
+        sid: message.sid,
+        status: message.status,
+        errorCode: message.errorCode,
+        errorMessage: message.errorMessage,
+        dateCreated: message.dateCreated,
+        dateUpdated: message.dateUpdated,
+        dateSent: message.dateSent,
+        to: message.to,
+        from: message.from,
+        body: message.body,
+        price: message.price,
+        priceUnit: message.priceUnit
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch message status: ' + error.message
+    });
+  }
+});
+
+// Twilio account diagnostics
+app.get('/twilio-diagnostics', async (req, res) => {
+  try {
+    const config = require('./lib/config');
+    const twilioConfig = config.getTwilioConfig();
+    const twilio = require('twilio');
+    const client = twilio(twilioConfig.accountSid, twilioConfig.authToken);
+
+    const account = await client.api.accounts(twilioConfig.accountSid).fetch();
+    const balance = await client.balance.fetch();
+    
+    // Get recent messages for analysis
+    const recentMessages = await client.messages.list({ limit: 10 });
+    
+    res.json({
+      success: true,
+      diagnostics: {
+        account: {
+          sid: account.sid,
+          friendlyName: account.friendlyName,
+          type: account.type,
+          status: account.status
+        },
+        balance: {
+          accountSid: balance.accountSid,
+          balance: balance.balance,
+          currency: balance.currency
+        },
+        phone: {
+          number: twilioConfig.phoneNumber,
+          configured: true
+        },
+        recentMessages: recentMessages.map(msg => ({
+          sid: msg.sid,
+          status: msg.status,
+          errorCode: msg.errorCode,
+          errorMessage: msg.errorMessage,
+          to: msg.to,
+          from: msg.from,
+          dateCreated: msg.dateCreated
+        })),
+        warnings: account.type === 'Trial' ? [
+          'Trial account detected',
+          'SMS will only be delivered to verified phone numbers',
+          'Consider upgrading to full account for production use'
+        ] : []
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch Twilio diagnostics: ' + error.message
+    });
+  }
 });
 
 app.get('/health', (req, res) => {
